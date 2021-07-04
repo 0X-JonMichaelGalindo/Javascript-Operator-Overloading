@@ -9,6 +9,15 @@ It is a proof-of-concept for operator overloading in JavaScript using proxies.
 
 Unfortunately, this method has no practical applications.
 
+# TODO
+
+~~spec~~  
+~~documentation~~  
+~~proxy chaining~~  
+~~computable hash numerics~~  
+~~operator selection~~  
+vector math  
+
 <br />
 
 Example:
