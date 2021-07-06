@@ -57,7 +57,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
             [ a.kind === Vec4 && b.kind === Mat4 ] : ( a, b ) => ops[ '*' ]( b, a ),
             [ a.kind === Vec3 && b.kind === Mat3 ] : ( a, b ) => ops[ '*' ]( b, a ),
             [ a.kind === Num ] : ( a, b ) => ( { result: [ ...b ].map( n => n*a.x ), kind: b.kind } ),
-            [ a.kind === Vec3 && b.kind === Vec3 ] : ( { kind: Vec3,
+            [ a.kind === Vec3 && b.kind === Vec3 ] : ( a, b ) => ( { kind: Vec3,
                 result: {
                     x: a.y*b.z - a.z*b.y,
                     y: a.z*b.x - a.x*b.z,
@@ -76,23 +76,22 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     y: b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
                     z: b.x*a.m31 + b.y*a.m32 + b.z*a.m33,
                 } } ),
-            [ a.kind === Mat3 && b.kind === Mat3 ]: ( a, b, v ) => 
+            [ a.kind === Mat3 && b.kind === Mat3 ]: 
+                ( a, b, v = (ai,bi) => [1,2,3].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 ) ) => 
                 ( {kind: Mat3, result: [
                     v(1,1), v(1,2), v(1,3),
                     v(2,1), v(2,2), v(2,3),
                     v(3,1), v(3,2), v(3,3),
                 ] } ),
-            [ a.kind === Mat4 && b.kind === Mat4 ]: ( a, b, v ) => 
+            [ a.kind === Mat4 && b.kind === Mat4 ]: 
+                ( a, b, v = (ai,bi) => [1,2,3,4].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 ) ) => 
                 ( {kind: Mat4, result: [
                     v(1,1), v(1,2), v(1,3), v(1,4),
                     v(2,1), v(2,2), v(2,3), v(2,4),
                     v(3,1), v(3,2), v(3,3), v(3,4),
                     v(4,1), v(4,2), v(4,3), v(4,4),
                 ] } ),
-        }[ true ] )( 
-            a.source, b.source,
-            (ai,bi) => [1,2,3,4].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 )
-        ),
+        }[ true ] )( a.source, b.source ),
         '+': ( a, b ) => ( a, b ) => typeError( '+', a.kind, b.kind ), // { result, kind }
         '-': ( a, b ) => ( a, b ) => typeError( '-', a.kind, b.kind ), // { result, kind }
         '/': ( a, b ) => ( a, b ) => typeError( '/', a.kind, b.kind ), // { result, kind }
