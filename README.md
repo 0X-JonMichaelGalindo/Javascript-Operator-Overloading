@@ -6,7 +6,7 @@ A vector math library using overloaded operators on proxy properties: ```Vector.
 
 This code is for research purposes only, as this method has no apparent practical applications.
 
-# TODO
+### TODO
 
 ~~spec~~  
 ~~documentation~~  
@@ -19,7 +19,9 @@ pure operator example
 
 <br />
 
-Example:
+# Example
+
+Create and multiply 2 vectors.
 ```JavaScript
 const libraryName = 'V';
 const V = new OperatorVectorLibrary( libraryName );
@@ -31,9 +33,9 @@ V.c = V.a * V.b;
 
 
 //result:
-V.c[ 0 ] === -3; //true
-V.c[ 1 ] === 6; //true
-V.c[ 2 ] === -3; //true
+V.c[ 'x' ] === -3; //true
+V.c[ 'y' ] === 6; //true
+V.c[ 'z' ] === -3; //true
 
 ```
 
@@ -57,10 +59,10 @@ with ( V ) {
 ```
 <br />
 
-Method:
+# Method
 
 Our library is a proxy.  
-On get, we return numeric hashes.  
+On get, we return numeric hashes and store access sequence.  
 On set, we use a hash map to discover the operator used, then compute the result.
 
 
@@ -72,14 +74,14 @@ const V = new OperatorVectorLibrary(); //V is a proxy
 V.a = [ 1,2,3 ]; //set trap: We generate a numeric hash for 'a', and store [1,2,3]
 V.b = [ 4,5,6 ]; //set trap: We generate a numeric hash for 'b', and store [4,5,6]
 
-//We compute a hash map entry for each operator to overload:
-//  #a * #b | #a + #b | #a - #b | #a / #b | etc...
 
 V.c = V.a * V.b;
 //1. get trap [@@toPrimitive]: We return numeric hashes for 'a' and 'b' and store access chain: [ a, b ]
-//2. set trap 'c': We fetch the computed hash from our map.
-//3. on map hit, We know a, b, and the operator used (*). Compute [ -3, 6, -3 ] and store under 'c'
-//4. on map miss, We throw bad expression.
+//2. We compute a hash map entry for each operator to overload:
+//     #a * #b | #a + #b | #a - #b | #a / #b
+//3. set trap 'c': We fetch the computed hash from our map.
+//4. on map hit, We know a, b, and the operator used (*). Compute [ -3, 6, -3 ] and store under 'c'
+//5. on map miss, We throw bad expression.
 
 
 //result:
