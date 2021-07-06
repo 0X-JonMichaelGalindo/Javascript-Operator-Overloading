@@ -50,7 +50,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
     const ops = {
         //a and b are { id, construct, kind, source }
-        //select via a.kind, b.kind; apply to a.source, b.source; return { result, kind }
+        //select via a.kind, b.kind; apply to a.source, b.source; return { result[], kind }
         '*': ( a, b ) => ( { // { result, kind }
             [ true ]: ( a, b ) => typeError( '*', a.kind, b.kind ),
             [ b.kind === Num ] : ( a, b ) => ops[ '*' ]( b, a ),
@@ -58,24 +58,24 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
             [ a.kind === Vec3 && b.kind === Mat3 ] : ( a, b ) => ops[ '*' ]( b, a ),
             [ a.kind === Num ] : ( a, b ) => ( { result: [ ...b ].map( n => n*a.x ), kind: b.kind } ),
             [ a.kind === Vec3 && b.kind === Vec3 ] : ( a, b ) => ( { kind: Vec3,
-                result: {
-                    x: a.y*b.z - a.z*b.y,
-                    y: a.z*b.x - a.x*b.z,
-                    z: a.x*b.y - a.y*b.x
-                } } ),
+                result: [
+                    a.y*b.z - a.z*b.y,
+                    a.z*b.x - a.x*b.z,
+                    a.x*b.y - a.y*b.x
+                 ] } ),
             [ a.kind === Mat4 && b.kind === Vec4 ] : ( a, b ) => ({ kind: Vec4,
-                result: {
-                    x: b.x*a.m11 + b.y*a.m12 + b.z*a.m13 + b.w*a.m14,
-                    y: b.x*a.m21 + b.y*a.m22 + b.z*a.m23 + b.w*a.m24,
-                    z: b.x*a.m31 + b.y*a.m32 + b.z*a.m33 + b.w*a.m34,
-                    w: b.x*a.m41 + b.y*a.m42 + b.z*a.m43 + b.w*a.m44,
-                } } ),
+                result: [
+                    b.x*a.m11 + b.y*a.m12 + b.z*a.m13 + b.w*a.m14,
+                    b.x*a.m21 + b.y*a.m22 + b.z*a.m23 + b.w*a.m24,
+                    b.x*a.m31 + b.y*a.m32 + b.z*a.m33 + b.w*a.m34,
+                    b.x*a.m41 + b.y*a.m42 + b.z*a.m43 + b.w*a.m44,
+                 ] } ),
             [ a.kind === Mat3 && b.kind === Vec3 ] : ( a, b ) => ({ kind: Vec3,
-                result: {
-                    x: b.x*a.m11 + b.y*a.m12 + b.z*a.m13,
-                    y: b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
-                    z: b.x*a.m31 + b.y*a.m32 + b.z*a.m33,
-                } } ),
+                result: [
+                    b.x*a.m11 + b.y*a.m12 + b.z*a.m13,
+                    b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
+                    b.x*a.m31 + b.y*a.m32 + b.z*a.m33,
+                 ] } ),
             [ a.kind === Mat3 && b.kind === Mat3 ]: 
                 ( a, b, v = (ai,bi) => [1,2,3].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 ) ) => 
                 ( {kind: Mat3, result: [
