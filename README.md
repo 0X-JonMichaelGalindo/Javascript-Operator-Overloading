@@ -13,7 +13,8 @@ This code is for research purposes only, as this method has no apparent practica
 ~~proxy chaining~~  
 ~~computable hash numerics~~  
 ~~operator selection~~  
-vector math  
+~~vector math~~  
+write tests
 
 <br />
 
