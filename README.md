@@ -4,10 +4,7 @@ A vector math library using overloaded operators: ```Vector.a = Vector.b * Vecto
 
 <br />
 
-This code is for research purposes only.  
-It is a proof-of-concept for operator overloading in JavaScript using proxies.
-
-Unfortunately, this method has no practical applications.
+This code is for research purposes only, as this method has no apparent practical applications.
 
 # TODO
 
@@ -43,7 +40,8 @@ Method:
 
 Our library is a proxy.  
 On get, we return numeric hashes.  
-On set, we use a hash map to discover the operator used.
+On set, we use a hash map to discover the properties and operator used, then compute the result.
+
 
 <br />
 
