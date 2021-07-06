@@ -48,7 +48,7 @@ function OperatorVectorLibrary( libraryName = 'V', supportWith = true ) {
 
     const areNumbers = ( ...a ) => a.reduce( ( t, m ) => ( t && ( typeof m ==='number' ) && ( ! isNaN( m ) ) ), true );
 
-    const ops = window.ops = {
+    const ops = {
         //a and b are { id, construct, kind, source }
         //select via a.kind, b.kind; apply to a.source, b.source; return { result[], kind }
         '*': ( a, b ) => ( { // { result, kind }
@@ -125,9 +125,7 @@ function OperatorVectorLibrary( libraryName = 'V', supportWith = true ) {
     let dotOperator = false;
 
     const library = {};
-    window.library = library;
     const access = [];
-    window.access = access;
 
     const Num = 0;
     const Vec2 = 1;
