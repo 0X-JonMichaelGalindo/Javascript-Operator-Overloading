@@ -39,7 +39,7 @@ SOFTWARE.
 
 */
 
-const OperatorVectorLibrary = ( libraryName = 'V' ) => {
+function OperatorVectorLibrary( libraryName = 'V', supportWith = true ) {
 
     const opTypeError = ( op, a, b ) => { throw `${libraryName}: Type Error: ${Kind[a]} ${op} ${Kind[b]} is not a valid operation` };
 
@@ -48,16 +48,16 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
     const areNumbers = ( ...a ) => a.reduce( ( t, m ) => ( t && ( typeof m ==='number' ) && ( ! isNaN( m ) ) ), true );
 
-    const ops = {
+    const ops = window.ops = {
         //a and b are { id, construct, kind, source }
         //select via a.kind, b.kind; apply to a.source, b.source; return { result[], kind }
         '*': ( a, b ) => ( { // { result, kind }
 
             [ true ]: () => opTypeError( '*', a.kind, b.kind ),
 
-            [ b.kind === Num ] : ( a, b ) => ops[ '*' ]( b, a ),
-            [ a.kind === Vec4 && b.kind === Mat4 ] : ( a, b ) => ops[ '*' ]( b, a ),
-            [ a.kind === Vec3 && b.kind === Mat3 ] : ( a, b ) => ops[ '*' ]( b, a ),
+            [ b.kind === Num ] : () => ops[ '*' ]( b, a ),
+            [ a.kind === Vec4 && b.kind === Mat4 ] : () => ops[ '*' ]( b, a ),
+            [ a.kind === Vec3 && b.kind === Mat3 ] : () => ops[ '*' ]( b, a ),
 
             [ a.kind === Num ] : ( a, b ) => ( { result: [ ...b ].map( n => n*a.x ), kind: b.kind } ),
 
@@ -68,7 +68,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     a.x*b.y - a.y*b.x
                  ] } ),
 
-            [ a.kind === Mat3 && b.kind === Vec3 ] : ( a, b ) => ({ kind: Vec3,
+            [ a.kind === Mat3 && b.kind === Vec3 ] : ( a, b ) => ( { kind: Vec3,
                 result: [
                     b.x*a.m11 + b.y*a.m12 + b.z*a.m13,
                     b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
@@ -101,31 +101,33 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
         }[ true ] )( a.source, b.source ),
         '+': ( a, b ) => ( { // { result, kind }
             [ true ] : () => opTypeError( '+', a.kind, b.kind ),
-            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].map( ( n, i ) => n + a[i] ), kind: b.kind } ),
-        } ), 
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...a ].map( ( n, i ) => n + b[i] ), kind: b.kind } ),
+        }[ true ] )( a.source, b.source ),
         '-': ( a, b ) => ( { // { result, kind }
             [ true ] : () => opTypeError( '-', a.kind, b.kind ),
-            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].map( ( n, i ) => n - a[i] ), kind: b.kind } ),
-        } ), 
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...a ].map( ( n, i ) => n - b[i] ), kind: b.kind } ),
+        }[ true ] )( a.source, b.source ),
         '/': ( a, b ) => ( { // { result, kind }
             [ true ] : () => opTypeError( '/', a.kind, b.kind ),
             [ b.kind === Num ] : ( a, b ) => ( { result: [ ...a ].map( ( n ) => n / b.x ), kind: b.kind } ),
-        } ), // { result, kind }
+        }[ true ] )( a.source, b.source ),
         '.': ( a, b ) => ( { // { result, kind }
             [ true ] : () => opTypeError( '.', a.kind, b.kind ),
-            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].reduce( ( t, n, i ) => t + n * a[i] ), kind: b.kind } ),
-        } ), 
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ [ ...a ].reduce( ( t, n, i ) => t + n * b[i], 0 ) ], kind: Num } ),
+        }[ true ] )( a.source, b.source ),
 
         //a and b are { source, kind }
         //verify kind compatibility, select copier, apply, return null
-        _set: ( a, b ) => {}, // null
+        _set: ( a, b ) => b.source.forEach( ( n, i ) => a.source[ i ] = n ), // null
     }
     //return: { result{x:,y:,...}, kind: Num|Vec2|... }
 
     let dotOperator = false;
 
     const library = {};
+    window.library = library;
     const access = [];
+    window.access = access;
 
     const Num = 0;
     const Vec2 = 1;
@@ -169,18 +171,37 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
         if( like({ Vec2, Vec3, Vec4 }) ) [ 'y', 'g', 't' ].forEach( k => alias( k, 1 ) );
         if( like({ Vec3, Vec4 }) ) [ 'z', 'b', 'p' ].forEach( k => alias( k, 2 ) );
         if( like({ Vec4 }) ) [ 'w', 'a', 'q' ].forEach( k => alias( k, 3 ) );
+        if( like({ Mat3 } )) map3.forEach( alias );
+        if( like({ Mat4 } )) map4.forEach( alias );
 
+        source.kind = kind;
+
+        const destrand = ( k ) => {
+            if( 
+                access[ access.length - 1 ].id === id ||
+                ( access.length >= 2 && access[ access.length - 2 ].id === id )
+            ) return access.pop();
+
+            access.length = 0;
+            throw `${libraryName}[ '${name}' ]: Illegal access [${k}] from stranded reference`;
+        }
+        
         const construct = new Proxy( source, {
 
             get( source, k ) {
 
                 if( k === Symbol.toPrimitive ) {
+                    //Keep chain on id
+                    //destrand( '@@toPrimitive' );
+
                     //inline usage chain
                     //Vector[ varA ] * Vector[ varB ]
                     return () => id;
                 }
 
                 if( k === Symbol.iterator ) {
+                    destrand( '@@iterator' );
+
                     //iterate
                     let i = 0;
                     return function* () {
@@ -188,24 +209,16 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     }
                 }
 
-                if( source.hasOwnProperty( k ) ) {
-
-                    //must be able to remove parent access from current chain
-                    if( access[ access.length - 1 ] !== id ) {
-                        access.length = 0;
-                        throw `${libraryName}[ '${name}' ]: Illegal access [${k}] from stranded reference`;
-                    }
-
-                    //property accessor, remove parent access from chain
-                    access.pop();
+                if( k !== 'kind' && source.hasOwnProperty( k ) ) {
+                    destrand( k );
 
                     return source[ k ];
                 }
 
                 if( k === libraryName ) {
                     // Vector[ varA ] . Vector[ varB ]
-                    return new Proxy( {
-                        get( k2 ) {
+                    return new Proxy( {}, {
+                        get( _, k2 ) {
                             if( library.hasOwnProperty( k2 ) ) {
                                 const name = k2;
                                 dotOperator = Object.freeze( { name } );
@@ -219,15 +232,25 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     } );
                 }
 
+                if( k === 'length' ) {
+                    destrand( k );
+
+                    return source.length;
+                }
+
                 if( k === 'toString' ) {
+                    destrand( k );
+
                     //Vector[ varA ].toString()
                     return () => JSON.stringify( source );
                 }
 
                 //TODO: support all array functions
                 if( k === 'join' ) {
+                    destrand( k );
+
                     //Vector[ varA ].join()
-                    return source.join();
+                    return c => source.join( c );
 
                 }
 
@@ -236,8 +259,9 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
             },
 
             set( source, k, n ) {
+                destrand( k );
                 if( source.hasOwnProperty( k ) ) {
-                    if( ! areNumbers( k ) ) throw `${libraryName}[ '${name}' ][ '${k}' ]: Illegal assignment: ${ isNaN( n ) ? 'NaN' : typeof n }`
+                    if( ! areNumbers( n ) ) throw `${libraryName}[ '${name}' ][ '${k}' ]: Illegal assignment: ${ isNaN( n ) ? 'NaN' : typeof n }`
                     source[ k ] = n;
                     return n;
                 }
@@ -248,7 +272,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
         } );
         
-        library[ name ] = { id, construct, kind, source }
+        library[ name ] = { id, construct, kind, source, name }
 
         return construct;
 
@@ -257,8 +281,19 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
     return new Proxy( library, {
 
+        has( v, k ) {
+            if( supportWith === true ) return true;
+            return library.hasOwnProperty( k );
+        },
+
         get ( v, k ) {
 
+            if( typeof k !== 'string' ) return {
+                [ true ]: undefined,
+                [ supportWith === true && k === Symbol.unscopables ]: window,
+                [ k === Symbol.toPrimitive ]: ()=>'[object Object]',
+            }[ true ]
+            
             if( k.indexOf( 'LITERAL' ) === 0 ) {
 
                 throw `${libraryName}[ '${k}' ]: Reserved name`;
@@ -269,8 +304,8 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
                 if( k.indexOf( ',' ) > -1 ) {
 
-                    const array = k.split( ',' ).map( n => isNaN( n ) ? null : 1*n );
-                    if( areNumbers( array ) ) {
+                    const array = k.split( ',' ).map( n => 1*n );
+                    if( areNumbers( ...array ) ) {
 
                         //TODO: k may be joined array, allow LITERAL_VEC3, etc.
                         const kind = {
@@ -285,21 +320,28 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
                         if( kind === null ) throw `${libraryName} illegal literal`;
 
-                        const name = {
-                            Vec2: 'LITERAL_VEC2',
-                            Vec3: 'LITERAL_VEC3',
-                            Vec4: 'LITERAL_VEC4',
-                            Mat3: 'LITERAL_MAT3',
-                            Mat4: 'LITERAL_MAT4',
+                        let name = {
+                            [ Vec2 ]: 'LITERAL_VEC2',
+                            [ Vec3 ]: 'LITERAL_VEC3',
+                            [ Vec4 ]: 'LITERAL_VEC4',
+                            [ Mat3 ]: 'LITERAL_MAT3',
+                            [ Mat4 ]: 'LITERAL_MAT4',
                         }[ kind ];
 
-                        if( ! library.hasOwnProperty( name ) ) 
-                            return Construct( array, name, kind );
+                        if( access[0]?.name === name ) name += '_B';
+
+                        if( ! library.hasOwnProperty( name ) ) {
+                            Construct( array, name, kind );
+                            const { id, construct } = library[ name ];
+                            access.push( { id, name } );
+                            return construct;
+                        }
 
                         else {
-                            const destination = library[ name ];
-                            ops._set( destination, { source: array, kind } );
-                            return destination;
+                            ops._set( library[ name ], { source: array, kind } );
+                            const { id, construct } = library[ name ];
+                            access.push( { id, name } );
+                            return construct;
                         }
                     }
                     else {
@@ -314,7 +356,6 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                 if( library.hasOwnProperty( k ) ) {
                     //k is existing construct
                     const { id, construct } = library[ name ];
-
                     access.push( { id, name } );
                     return construct;
                 }
@@ -325,18 +366,17 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
             else {
              
-                const name = 'LITERAL';
-                const x = 1 * k;
+                const name = access[0]?.name === 'LITERAL' ? 'LITERAL_B' : 'LITERAL';
 
                 if( ! library[ name ] ) {
                     
-                    Construct( { x }, name, Num );
+                    Construct( [ 1 * k ], name, Num );
 
                 }
 
                 const { id, construct, source } = library[ name ];
 
-                source.x = x;
+                source[ 0 ] = 1 * k;
 
                 access.push( { id, name } );
                 return construct;
@@ -346,7 +386,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
         set ( v, k, o ) {
 
-            if( k === 'LITERAL' ) {
+            if( k.indexOf( 'LITERAL' ) === 0 ) {
 
                 throw `${libraryName}[ '${k}' ]: Reserved name`;
 
@@ -364,7 +404,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
                         const fromNames = ( ( x,y,z,w ) => ( {
 
-                            [ L ]: () => null,
+                            [ true ]: () => null,
                             [ areNumbers( x ) ]: () => Construct( [ x ], name, Num ),
                             [ areNumbers( x,y ) ]: () => Construct( [ x,y ], name, Vec2 ),
                             [ areNumbers( x,y,z ) ]: () => Construct( [ x,y,z ], name, Vec3 ),
@@ -425,6 +465,8 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     const a = library[ access[ 0 ].name ];
                     const b = library[ dotOperator.name ];
 
+                    access.length = 0;
+
                     dotOperator = false;
                     
                     const { result: resultObject, kind: resultKind } = ops[ '.' ]( a, b );
@@ -456,7 +498,9 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                 }
 
                 //bad expression
-                if( access.length > 2 ) throw `${libraryName} expressions must access no more than 2 keys`;
+                if( access.length > 2 ) {
+                    throw `${libraryName}: Expressions must access no more than 2 keys`;
+                }
 
                 if( access.length === 1 ) {
 
@@ -474,10 +518,10 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                         access.length = 0;
 
                         return ( {
-                            [ Num ]: () => Construct( { x }, copyName, Num ),
-                            [ Vec2 ]: () => Construct( { x,y }, copyName, Vec2 ),
-                            [ Vec3 ]: () => Construct( { x,y,z }, copyName, Vec3 ),
-                            [ Vec4 ]: () => Construct( { x,y,z,w }, copyName, Vec4 ),
+                            [ Num ]: () => Construct( [ x ], copyName, Num ),
+                            [ Vec2 ]: () => Construct( [ x,y ], copyName, Vec2 ),
+                            [ Vec3 ]: () => Construct( [ x,y,z ], copyName, Vec3 ),
+                            [ Vec4 ]: () => Construct( [ x,y,z,w ], copyName, Vec4 ),
                             [ Mat3 ]: () =>
                                 Construct( [
                                     x,  y,  z,
@@ -525,6 +569,8 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
                         const a = library[ access[ 0 ].name ];
                         const b = library[ access[ 1 ].name ];
+
+                        access.length = 0;
 
                         const { result: resultObject, kind: resultKind } = ops[ op ]( a, b );
 
