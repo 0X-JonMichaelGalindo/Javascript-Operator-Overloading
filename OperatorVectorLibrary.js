@@ -41,27 +41,38 @@ SOFTWARE.
 
 const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
-    const areNumbers = ( ...a ) => a.reduce( ( t, m ) => ( t && ( typeof m ==='number' ) ), true );
+    const opTypeError = ( op, a, b ) => { throw `${libraryName}: Type Error: ${Kind[a]} ${op} ${Kind[b]} is not a valid operation` };
 
     const r = () => ( ''+Math.random() ).substring( 2 );
     const key = () => BigInt( r() + r() );
 
-    const typeError = ( op, a, b ) => { throw `${libraryName}: Type Error: ${kindNames[a]} ${op} ${kindNames[b]} is not a valid operation` };
+    const areNumbers = ( ...a ) => a.reduce( ( t, m ) => ( t && ( typeof m ==='number' ) && ( ! isNaN( m ) ) ), true );
 
     const ops = {
         //a and b are { id, construct, kind, source }
         //select via a.kind, b.kind; apply to a.source, b.source; return { result[], kind }
         '*': ( a, b ) => ( { // { result, kind }
-            [ true ]: ( a, b ) => typeError( '*', a.kind, b.kind ),
+
+            [ true ]: () => opTypeError( '*', a.kind, b.kind ),
+
             [ b.kind === Num ] : ( a, b ) => ops[ '*' ]( b, a ),
             [ a.kind === Vec4 && b.kind === Mat4 ] : ( a, b ) => ops[ '*' ]( b, a ),
             [ a.kind === Vec3 && b.kind === Mat3 ] : ( a, b ) => ops[ '*' ]( b, a ),
+
             [ a.kind === Num ] : ( a, b ) => ( { result: [ ...b ].map( n => n*a.x ), kind: b.kind } ),
+
             [ a.kind === Vec3 && b.kind === Vec3 ] : ( a, b ) => ( { kind: Vec3,
                 result: [
                     a.y*b.z - a.z*b.y,
                     a.z*b.x - a.x*b.z,
                     a.x*b.y - a.y*b.x
+                 ] } ),
+
+            [ a.kind === Mat3 && b.kind === Vec3 ] : ( a, b ) => ({ kind: Vec3,
+                result: [
+                    b.x*a.m11 + b.y*a.m12 + b.z*a.m13,
+                    b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
+                    b.x*a.m31 + b.y*a.m32 + b.z*a.m33,
                  ] } ),
             [ a.kind === Mat4 && b.kind === Vec4 ] : ( a, b ) => ({ kind: Vec4,
                 result: [
@@ -70,32 +81,40 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     b.x*a.m31 + b.y*a.m32 + b.z*a.m33 + b.w*a.m34,
                     b.x*a.m41 + b.y*a.m42 + b.z*a.m43 + b.w*a.m44,
                  ] } ),
-            [ a.kind === Mat3 && b.kind === Vec3 ] : ( a, b ) => ({ kind: Vec3,
-                result: [
-                    b.x*a.m11 + b.y*a.m12 + b.z*a.m13,
-                    b.x*a.m21 + b.y*a.m22 + b.z*a.m23,
-                    b.x*a.m31 + b.y*a.m32 + b.z*a.m33,
-                 ] } ),
+
             [ a.kind === Mat3 && b.kind === Mat3 ]: 
-                ( a, b, v = (ai,bi) => [1,2,3].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 ) ) => 
+                ( a, b, v = (ai,bi) => [1,2,3].reduce( (e,j) => e + a['m'+ai+j] * b['m'+j+bi], 0 ) ) => 
                 ( {kind: Mat3, result: [
                     v(1,1), v(1,2), v(1,3),
                     v(2,1), v(2,2), v(2,3),
                     v(3,1), v(3,2), v(3,3),
                 ] } ),
             [ a.kind === Mat4 && b.kind === Mat4 ]: 
-                ( a, b, v = (ai,bi) => [1,2,3,4].reduce( (e,j) => e + a.source['m'+ai+j] * b.source['m'+j+bi], 0 ) ) => 
+                ( a, b, v = (ai,bi) => [1,2,3,4].reduce( (e,j) => e + a['m'+ai+j] * b['m'+j+bi], 0 ) ) => 
                 ( {kind: Mat4, result: [
                     v(1,1), v(1,2), v(1,3), v(1,4),
                     v(2,1), v(2,2), v(2,3), v(2,4),
                     v(3,1), v(3,2), v(3,3), v(3,4),
                     v(4,1), v(4,2), v(4,3), v(4,4),
                 ] } ),
+
         }[ true ] )( a.source, b.source ),
-        '+': ( a, b ) => ( a, b ) => typeError( '+', a.kind, b.kind ), // { result, kind }
-        '-': ( a, b ) => ( a, b ) => typeError( '-', a.kind, b.kind ), // { result, kind }
-        '/': ( a, b ) => ( a, b ) => typeError( '/', a.kind, b.kind ), // { result, kind }
-        '.': ( a, b ) => ( a, b ) => typeError( '.', a.kind, b.kind ), // { result, kind }
+        '+': ( a, b ) => ( { // { result, kind }
+            [ true ] : () => opTypeError( '+', a.kind, b.kind ),
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].map( ( n, i ) => n + a[i] ), kind: b.kind } ),
+        } ), 
+        '-': ( a, b ) => ( { // { result, kind }
+            [ true ] : () => opTypeError( '-', a.kind, b.kind ),
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].map( ( n, i ) => n - a[i] ), kind: b.kind } ),
+        } ), 
+        '/': ( a, b ) => ( { // { result, kind }
+            [ true ] : () => opTypeError( '/', a.kind, b.kind ),
+            [ b.kind === Num ] : ( a, b ) => ( { result: [ ...a ].map( ( n ) => n / b.x ), kind: b.kind } ),
+        } ), // { result, kind }
+        '.': ( a, b ) => ( { // { result, kind }
+            [ true ] : () => opTypeError( '.', a.kind, b.kind ),
+            [ a.kind === b.kind ] : ( a, b ) => ( { result: [ ...b ].reduce( ( t, n, i ) => t + n * a[i] ), kind: b.kind } ),
+        } ), 
 
         //a and b are { source, kind }
         //verify kind compatibility, select copier, apply, return null
@@ -114,7 +133,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
     const Vec4 = 3;
     const Mat3 = 4;
     const Mat4 = 5;
-    const kindNames = [ 'Num', 'Vec2', 'Vec3', 'Vec4', 'Mat4' ];
+    const Kind = [ 'Num', 'Vec2', 'Vec3', 'Vec4', 'Mat3', 'Mat4' ];
 
 
     //alias vector properties with array indices
@@ -143,13 +162,13 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
             Object.defineProperty( source, k, def( i ) );
         }
 
-        if( kind === Num ) alias( 'value', 'x' );
-        if( kind in [ Num, Vec2, Vec3, Vec4 ] ) alias( '0', 'x' );
-        if( kind in [ Vec2, Vec3, Vec4 ] ) alias( '1', 'y' );
-        if( kind in [ Vec3, Vec4 ] ) alias( '2', 'z' );
-        if( kind in [ Vec4 ] ) alias( '3', 'w' );
-        if( kind === Mat3 ) map3.forEach( alias );
-        if( kind === Mat4 ) map4.forEach( alias );
+        const like = g => Kind[ kind ] in g;
+
+        if( like({ Num }) ) alias( 'value', 0 );
+        if( like({ Num, Vec2, Vec3, Vec4 }) ) [ 'x', 'r', 's' ].forEach( k => alias( k, 0 ) );
+        if( like({ Vec2, Vec3, Vec4 }) ) [ 'y', 'g', 't' ].forEach( k => alias( k, 1 ) );
+        if( like({ Vec3, Vec4 }) ) [ 'z', 'b', 'p' ].forEach( k => alias( k, 2 ) );
+        if( like({ Vec4 }) ) [ 'w', 'a', 'q' ].forEach( k => alias( k, 3 ) );
 
         const construct = new Proxy( source, {
 
@@ -205,16 +224,10 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     return () => JSON.stringify( source );
                 }
 
+                //TODO: support all array functions
                 if( k === 'join' ) {
                     //Vector[ varA ].join()
-                    return {
-                        [ Num ]: c => c,
-                        [ Vec2 ]: c => [ source.x, source.y ].join( c ),
-                        [ Vec3 ]: c => [ source.x, source.y, source.z ].join( c ),
-                        [ Vec4 ]: c => [ source.x, source.y, source.z, source.w ].join( c ),
-                        [ Mat3 ]: c => source.join( c ),
-                        [ Mat4 ]: c => source.join( c ),
-                    }[ kind ]
+                    return source.join();
 
                 }
 
@@ -224,11 +237,13 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
             set( source, k, n ) {
                 if( source.hasOwnProperty( k ) ) {
+                    if( ! areNumbers( k ) ) throw `${libraryName}[ '${name}' ][ '${k}' ]: Illegal assignment: ${ isNaN( n ) ? 'NaN' : typeof n }`
                     source[ k ] = n;
                     return n;
                 }
-
-                return undefined;
+                else {
+                    throw `${libraryName}[ '${name}' ][ '${k}' ] is not assignable`;
+                }
             }
 
         } );
@@ -348,38 +363,40 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
                     if( typeof o === 'object' ) {
 
                         const fromNames = ( ( x,y,z,w ) => ( {
-                            [ true ]: () => null,
-                            [ typeof x === 'number' ]: () => Construct( { x }, name, Num ),
-                            [ typeof y === 'number' ]: () => Construct( { x,y }, name, Vec2 ),
-                            [ typeof z === 'number' ]: () => Construct( { x,y,z }, name, Vec3 ),
-                            [ typeof w === 'number' ]: () => Construct( { x,y,z,w }, name, Vec4 ),
+
+                            [ L ]: () => null,
+                            [ areNumbers( x ) ]: () => Construct( [ x ], name, Num ),
+                            [ areNumbers( x,y ) ]: () => Construct( [ x,y ], name, Vec2 ),
+                            [ areNumbers( x,y,z ) ]: () => Construct( [ x,y,z ], name, Vec3 ),
+                            [ areNumbers( x,y,z,w ) ]: () => Construct( [ x,y,z,w ], name, Vec4 ),
+
                         }[ true ] ) )( o.x, o.y, o.z, o.w )()
 
                         if( fromNames !== null ) return fromNames;
 
-                        const fromIterable = 
-                            ( typeof o[ Symbol.iterator ] !== 'function' ) ?
-                            null :
-                            ( ( x,y,z,w,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15 ) => ( {
-                                [ true ]: () => null,
-                                [ typeof x === 'number' ]: () => Construct( { x }, name, Num ),
-                                [ areNumbers( x,y ) ]: () => Construct( { x,y }, name, Vec2 ),
-                                [ areNumbers( x,y,z ) ]: () => Construct( { x,y,z }, name, Vec3 ),
-                                [ areNumbers( x,y,z,w ) ]: () => Construct( { x,y,z,w }, name, Vec4 ),
-                                [ areNumbers( x,y,z,w,m4,m5,m6,m7,m8 ) ]: 
-                                    () => Construct( [ 
-                                        x,  y,  z,
-                                        w,  m4, m5,
-                                        m6, m7, m8
-                                     ], name, Mat3 ),
-                                [ areNumbers( x,y,z,w,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15 ) ]: 
-                                    () => Construct( [ 
-                                        x,   y,   z,   w,
-                                        m4,  m5,  m6,  m7,
-                                        m8,  m9,  m10, m11,
-                                        m12, m13, m14, m15
-                                     ], name, Mat4 ),
-                            }[ true ] ) )( ...o )();
+                        const fromIterable = ( typeof o[ Symbol.iterator ] !== 'function' ) ? null :
+                        ( ( x,y,z,w,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15 ) => ( {
+
+                            [ true ]: () => null,
+                            [ typeof x === 'number' ]: () => Construct( [ x ], name, Num ),
+                            [ areNumbers( x,y ) ]: () => Construct( [ x,y ], name, Vec2 ),
+                            [ areNumbers( x,y,z ) ]: () => Construct( [ x,y,z ], name, Vec3 ),
+                            [ areNumbers( x,y,z,w ) ]: () => Construct( [ x,y,z,w ], name, Vec4 ),
+                            [ areNumbers( x,y,z,w,m4,m5,m6,m7,m8 ) ]: 
+                                () => Construct( [ 
+                                    x,  y,  z,
+                                    w,  m4, m5,
+                                    m6, m7, m8
+                                    ], name, Mat3 ),
+                            [ areNumbers( x,y,z,w,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15 ) ]: 
+                                () => Construct( [ 
+                                    x,   y,   z,   w,
+                                    m4,  m5,  m6,  m7,
+                                    m8,  m9,  m10, m11,
+                                    m12, m13, m14, m15
+                                    ], name, Mat4 ),
+                                    
+                        }[ true ] ) )( ...o )();
 
                         if( fromIterable !== null ) return fromIterable;
 
@@ -426,10 +443,7 @@ const OperatorVectorLibrary = ( libraryName = 'V' ) => {
 
                         if( resultKind !== destinationKind ) {
 
-                            const resultKindName = kindNames[ resultKind ];
-                            const destinationKindName = kindNames[ destinationKind ];
-
-                            throw `${libraryName}[ '${destinationName}' ]: Type Error. Required = <${destinationKindName}>, got = <${resultKindName}>`;
+                            throw `${libraryName}[ '${destinationName}' ]: Type Error. Required = <${Kind[ destinationKind ]}>, got = <${Kind[ resultKind ]}>`;
 
                         }
 
