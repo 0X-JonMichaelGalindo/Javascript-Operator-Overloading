@@ -1,6 +1,6 @@
 # Overview: Javascript Operator Overloading
 
-A vector math library using overloaded operators: ```Vector.a = Vector.b * Vector.c```
+A vector math library using overloaded operators on proxy properties: ```Vector.a = Vector.b * Vector.c```
 
 <br />
 
@@ -14,13 +14,15 @@ This code is for research purposes only, as this method has no apparent practica
 ~~computable hash numerics~~  
 ~~operator selection~~  
 ~~vector math~~  
-write tests
+~~write tests~~  
+pure operator example
 
 <br />
 
 Example:
 ```JavaScript
-const V = new OperatorVectorLibrary();
+const libraryName = 'V';
+const V = new OperatorVectorLibrary( libraryName );
 
 V.a = [ 1,2,3 ];
 V.b = [ 4,5,6 ];
@@ -35,13 +37,31 @@ V.c[ 2 ] === -3; //true
 
 ```
 
+Example using 'with'
+
+```JavaScript
+const libraryName = 'V';
+const supportWith = true;
+const V = new OperatorVectorLibrary( libraryName, supportWith );
+
+with ( V ) {
+    a = [1,2,3];
+    b = [4,5,6];
+    
+    c = a * b;
+    console.log( ...c ); //logs: -3,6,-3
+    
+    c = a + b;
+    console.log( ...c ); //logs: 5,7,9
+}
+```
 <br />
 
 Method:
 
 Our library is a proxy.  
 On get, we return numeric hashes.  
-On set, we use a hash map to discover the properties and operator used, then compute the result.
+On set, we use a hash map to discover the operator used, then compute the result.
 
 
 <br />
@@ -56,7 +76,7 @@ V.b = [ 4,5,6 ]; //set trap: We generate a numeric hash for 'b', and store [4,5,
 //  #a * #b | #a + #b | #a - #b | #a / #b | etc...
 
 V.c = V.a * V.b;
-//1. get trap [@@toPrimitive]: We return numeric hashes for 'a' and 'b'
+//1. get trap [@@toPrimitive]: We return numeric hashes for 'a' and 'b' and store access chain: [ a, b ]
 //2. set trap 'c': We fetch the computed hash from our map.
 //3. on map hit, We know a, b, and the operator used (*). Compute [ -3, 6, -3 ] and store under 'c'
 //4. on map miss, We throw bad expression.
@@ -67,11 +87,6 @@ V.c[ 0 ] === -3; //get trap: We chain proxies to fetch store under 'c'
 V.c[ 1 ] ===  6; //get trap: We chain proxies to fetch store under 'c'
 V.c[ 2 ] === -3; //get trap: We chain proxies to fetch store under 'c'
 ```
-
-
-<br />
-
-(The included example vector library uses an optimization to eliminate the hash map, to reduce memory usage.)
 
 <br />
 
