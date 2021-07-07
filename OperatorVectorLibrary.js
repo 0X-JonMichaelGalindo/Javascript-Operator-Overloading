@@ -39,7 +39,7 @@ SOFTWARE.
 
 */
 
-function OperatorVectorLibrary( libraryName = 'V', supportWith = true ) {
+function OperatorVectorLibrary( libraryName = 'V', supportWith = false ) {
 
     const library = {};
     const access = [];
