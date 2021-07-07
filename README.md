@@ -6,19 +6,6 @@ A vector math library using overloaded operators on proxy properties: ```Vector.
 
 This code is for research purposes only, as this method has no apparent practical applications.
 
-### TODO
-
-~~spec~~  
-~~documentation~~  
-~~proxy chaining~~  
-~~computable hash numerics~~  
-~~operator selection~~  
-~~vector math~~  
-~~write tests~~  
-pure operator example
-
-<br />
-
 # Example
 
 Create and multiply 2 vectors.
