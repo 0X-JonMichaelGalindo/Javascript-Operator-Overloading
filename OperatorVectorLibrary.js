@@ -80,7 +80,6 @@ function OperatorVectorLibrary( libraryName = 'V', supportWith = false ) {
                             [ array.length === 2]: Vec2,
                             [ array.length === 3]: Vec3,
                             [ array.length === 4]: Vec4,
-                            [ array.length === 4]: Vec4,
                             [ array.length === 9]: Mat3,
                             [ array.length === 16]: Mat4,
                         }[ true ];
@@ -268,7 +267,10 @@ function OperatorVectorLibrary( libraryName = 'V', supportWith = false ) {
 
                 //bad expression
                 if( access.length > 2 ) {
+                    
+                    access.length = 0;
                     throw `${libraryName}: Expressions must access no more than 2 keys`;
+                    
                 }
 
                 if( access.length === 1 ) {
